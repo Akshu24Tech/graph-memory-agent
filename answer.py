@@ -124,7 +124,7 @@ CONTEXT:
 {context}
 """
     # Gemini Flash can 503 under demand spikes — retry, then fall back.
-    candidates = [GEMINI_MODEL, "gemini-2.0-flash", "gemini-flash-latest"]
+    candidates = [GEMINI_MODEL, "gemini-2.5-flash", "gemini-flash-latest"]
     seen, models = set(), []
     for m in candidates:
         if m not in seen:
