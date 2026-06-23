@@ -6,8 +6,10 @@ services:
       - "7474:7474"   # HTTP browser UI
       - "7687:7687"   # Bolt protocol
     environment:
-      # CHANGE the password before any non-local use. Format: neo4j/<password>
-      NEO4J_AUTH: neo4j/akshumind123
+      # Password comes from NEO4J_PASSWORD (shell env or the .env file next to this
+      # compose file). Falls back to a local dev default if unset. CHANGE before any
+      # non-local use. Format: neo4j/<password>
+      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD:-akshumind123}"
       # Community Edition: single DB, accept the license
       NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
     volumes:

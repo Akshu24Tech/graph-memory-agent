@@ -27,16 +27,33 @@ URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 USER = os.getenv("NEO4J_USER", "neo4j")
 PASSWORD = os.getenv("NEO4J_PASSWORD", "akshumind123")
 
-# The wiki lives next to this repo, one level up from projects/.
-WIKI = Path(__file__).resolve().parents[2] / "Akshu Mind"
-# Curated roots: the LLM-wiki pages, plus real project pages.
-# NOTE: projects/Financial_v2 is a graphify code-dump (hundreds of non-wiki
-# files), deliberately excluded so it doesn't pollute the knowledge graph.
-WIKI_ROOTS = [
-    WIKI / "pages",
-    WIKI / "projects" / "linkedin-feed-assistant",
-    WIKI / "projects" / "graph-memory-agent",
-]
+HERE = Path(__file__).resolve().parent
+
+
+def wiki_roots() -> list[Path]:
+    """Where to read markdown from.
+
+    Set WIKI_DIR to point at any folder of interlinked `.md` notes (all `.md`
+    under it are ingested) — this is the clone-and-run path; `.env.example`
+    defaults it to the bundled ./sample-wiki.
+
+    If WIKI_DIR is unset, fall back to the author's private "Akshu Mind" vault
+    with curated roots (pages/ + real project folders; the Financial_v2
+    graphify code-dump is excluded so it can't pollute the graph).
+    """
+    wiki_dir = os.getenv("WIKI_DIR")
+    if wiki_dir:
+        return [(HERE / wiki_dir).resolve() if not Path(wiki_dir).is_absolute()
+                else Path(wiki_dir)]
+    vault = HERE.parents[1] / "Akshu Mind"
+    return [
+        vault / "pages",
+        vault / "projects" / "linkedin-feed-assistant",
+        vault / "projects" / "graph-memory-agent",
+    ]
+
+
+WIKI_ROOTS = wiki_roots()
 
 WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
 TITLE = re.compile(r"^#\s+(.+)$", re.MULTILINE)
