@@ -1,0 +1,72 @@
+# MCP Toolbox for Databases — Neo4j config for the Graph-Memory Agent.
+# Run:  toolbox --tools-file tools.yaml --stdio
+# Docs: https://mcp-toolbox.dev
+#
+# Tool-based, not LLM-generates-Cypher: the agent can only call the named tools
+# below. graph-schema + run-cypher give it open read access for exploration;
+# page-neighbors + path-between are locked, parameterized queries that encode the
+# two moves this project is about (typed expansion + multi-hop bridge).
+
+sources:
+  akshu-mind-graph:
+    kind: neo4j
+    uri: ${NEO4J_URI}
+    user: ${NEO4J_USER}
+    password: ${NEO4J_PASSWORD}
+    database: ${NEO4J_DATABASE}
+
+tools:
+  graph-schema:
+    kind: neo4j-schema
+    source: akshu-mind-graph
+    description: >
+      Return the labels, relationship types, and property keys of the notes
+      knowledge graph. Call this first to learn the data model before querying.
+
+  run-cypher:
+    kind: neo4j-execute-cypher
+    source: akshu-mind-graph
+    readOnly: true
+    description: >
+      Run an arbitrary READ-ONLY Cypher query against the notes knowledge graph.
+      Writes (CREATE, MERGE, DELETE, SET) are rejected.
+
+  page-neighbors:
+    kind: neo4j-cypher
+    source: akshu-mind-graph
+    description: >
+      Given a page slug, list the pages directly connected to it and the typed
+      relationship to each (LINKS_TO, CITES, SEE_ALSO, CONTRADICTS).
+    statement: |
+      MATCH (p:Page {slug: $slug})-[r]-(n:Page)
+      RETURN type(r) AS rel, n.slug AS neighbor, n.title AS title
+      ORDER BY rel, neighbor
+    parameters:
+      - name: slug
+        type: string
+        description: The slug of the page to expand, e.g. "neo4j".
+
+  path-between:
+    kind: neo4j-cypher
+    source: akshu-mind-graph
+    description: >
+      Find the shortest chain of linked pages between two slugs — the multi-hop
+      bridge a flat vector search misses. Returns the ordered list of page slugs.
+    statement: |
+      MATCH (a:Page {slug: $from}), (b:Page {slug: $to}),
+            path = shortestPath((a)-[*..6]-(b))
+      RETURN [n IN nodes(path) | n.slug] AS hops
+    parameters:
+      - name: from
+        type: string
+        description: Starting page slug.
+      - name: to
+        type: string
+        description: Destination page slug.
+
+toolsets:
+  graph-memory:
+    - graph-schema
+    - run-cypher
+    - page-neighbors
+    - path-between

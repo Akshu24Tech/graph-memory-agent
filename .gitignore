@@ -4,3 +4,7 @@ __pycache__/
 .venv/
 mcp_stdout.log
 mcp_stderr.log
+# MCP Toolbox binary — download per README, do not commit (282MB)
+toolbox
+toolbox.exe
+toolbox-boot.log

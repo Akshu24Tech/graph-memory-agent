@@ -79,21 +79,44 @@ uv run answer.py "your multi-hop question here"
 Point it at **your own** notes by setting `WIKI_DIR` in `.env` to any folder of
 interlinked markdown (Obsidian vaults work great), then re-run `ingest.py` + `embed.py`.
 
+> **Security note:** `docker-compose.yml` ships a local-dev password default for the
+> Neo4j container. That's fine for a local-only graph, but set your own
+> `NEO4J_PASSWORD` before exposing Neo4j to any network. The MCP tools are
+> read-only (`run-cypher` rejects writes), so an agent can read the graph but not mutate it.
+
 ## Use it from Claude Code (MCP)
 
-`.mcp.json` wires the official [Neo4j MCP server](https://github.com/neo4j-contrib/mcp-neo4j)
-into Claude Code, so you can query the graph in plain language (it issues Cypher
-for you). Open this folder in Claude Code, approve the server when prompted, run
-`/mcp` to confirm it's connected, then ask things like *"what pages contradict
-something?"* or *"what links into neo4j?"*.
+`.mcp.json` wires Google's [MCP Toolbox for Databases](https://mcp-toolbox.dev)
+into Claude Code, so you can query the graph in plain language. Toolbox is
+**tool-based, not LLM-generates-Cypher**: `tools.yaml` defines exactly what the
+agent may run, so it can't hallucinate or mutate a query. This repo ships four:
 
-`UV_LINK_MODE=copy` is set in the config on purpose — some filesystems reject uv's
-hardlinks; this makes the server install reliably everywhere.
+| Tool | What it does |
+|---|---|
+| `graph-schema` | Dump labels, relationship types, property keys (call first). |
+| `run-cypher` | Arbitrary **read-only** Cypher (writes rejected). |
+| `page-neighbors` | Locked query: typed neighbors of a page slug. |
+| `path-between` | Locked query: shortest chain between two slugs (the multi-hop bridge). |
+
+Setup:
+
+1. Download the Toolbox binary into this folder (it's gitignored, ~282MB):
+   ```bash
+   # Windows AMD64 — see mcp-toolbox.dev for macOS/Linux URLs
+   curl -O https://storage.googleapis.com/mcp-toolbox-for-databases/v1.5.0/windows/amd64/toolbox.exe
+   ```
+2. Open this folder in Claude Code, approve the server when prompted, run `/mcp`
+   to confirm it's connected.
+3. Ask things like *"what pages contradict something?"*, *"what links into
+   neo4j?"*, or *"find the path from neo4j to memory-governance."*
+
+Swap `--config tools.yaml` for `--prebuilt neo4j` in `.mcp.json` if you'd rather
+use Toolbox's built-in Neo4j toolset instead of these custom tools.
 
 ## Tech stack
 
 Neo4j Community Edition · fastembed (ONNX, no torch) · Gemini (`google-genai`) ·
-Neo4j MCP server · Python + uv.
+Google MCP Toolbox for Databases · Python + uv.
 
 ## Project layout
 
@@ -103,7 +126,8 @@ ingest.py            markdown -> typed graph
 embed.py             embeddings + vector index
 answer.py            GraphRAG retrieval + synthesis
 sample-wiki/         7 interlinked demo pages (clone-and-run)
-.mcp.json            Neo4j MCP server for Claude Code
+tools.yaml           MCP Toolbox source + 4 Neo4j tools
+.mcp.json            launches MCP Toolbox (stdio) for Claude Code
 ```
 
 ## Notes & limits
